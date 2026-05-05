@@ -28,10 +28,13 @@ pip3 install azure-cosmos --quiet
 pip3 install azure-storage-blob --quiet
 
 # Create Python script to handle the data import
+pip3 install azure-identity --quiet
+
 cat > seed_data.py << 'EOF'
 import json
 import os
 from azure.cosmos import CosmosClient, PartitionKey
+from azure.identity import DefaultAzureCredential
 
 def load_json_data(file_path):
     """Load data from JSON file"""
@@ -54,8 +57,19 @@ def setup_cosmos_db():
     """Set up Cosmos DB database and containers"""
     print("📦 Setting up Cosmos DB...")
     
-    # Initialize Cosmos client
-    cosmos_client = CosmosClient(os.environ['COSMOS_ENDPOINT'], os.environ['COSMOS_KEY'])
+    # Initialize Cosmos client (prefer AAD; fall back to key if local auth is enabled)
+    endpoint = os.environ['COSMOS_ENDPOINT']
+    key = os.environ.get('COSMOS_KEY')
+    use_aad = os.environ.get('COSMOS_USE_AAD', '').lower() in ('1', 'true', 'yes')
+    if key and not use_aad:
+        try:
+            cosmos_client = CosmosClient(endpoint, key)
+            list(cosmos_client.list_databases())
+        except Exception as e:
+            print(f"\u26a0\ufe0f  Key auth failed ({e}); falling back to AAD (DefaultAzureCredential).")
+            cosmos_client = CosmosClient(endpoint, DefaultAzureCredential())
+    else:
+        cosmos_client = CosmosClient(endpoint, DefaultAzureCredential())
     
     # Create database
     database_name = "FactoryOpsDB"

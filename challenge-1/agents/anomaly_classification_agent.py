@@ -3,6 +3,7 @@ import os
 
 from agent_framework.azure import AzureAIClient
 from azure.cosmos import CosmosClient
+from azure.identity import AzureCliCredential as SyncAzureCliCredential
 from azure.identity.aio import AzureCliCredential
 from dotenv import load_dotenv
 
@@ -13,10 +14,9 @@ load_dotenv(override=True)
 # Configuration
 project_endpoint = os.environ.get("AZURE_AI_PROJECT_ENDPOINT")
 
-# Initialize Cosmos DB clients globally for function tools
+# Initialize Cosmos DB clients globally for function tools (AAD auth)
 cosmos_endpoint = os.environ.get("COSMOS_ENDPOINT")
-cosmos_key = os.environ.get("COSMOS_KEY")
-cosmos_client = CosmosClient(cosmos_endpoint, cosmos_key)
+cosmos_client = CosmosClient(cosmos_endpoint, SyncAzureCliCredential())
 database = cosmos_client.get_database_client("FactoryOpsDB")
 thresholds_container = database.get_container_client("Thresholds")
 machines_container = database.get_container_client("Machines")
